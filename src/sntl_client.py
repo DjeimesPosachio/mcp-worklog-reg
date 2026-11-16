@@ -20,6 +20,7 @@ from src.errors import SntlError
 _DEFAULT_API = "https://back-end.viptech.com.br"
 
 _TOKEN_KEYS = ("access_token", "accessToken", "token", "jwt")
+_SESSION_COOKIE = "sntl_session"
 
 _http_client: httpx.Client | None = None
 
@@ -57,6 +58,7 @@ class SntlClient:
         self._password = password
         self._timeout = timeout
         self._token: str | None = None
+        self._cookie_session = False
 
     @classmethod
     def from_env(cls) -> "SntlClient":
@@ -165,18 +167,23 @@ class SntlClient:
         if response.status_code >= 400:
             raise self._map_error(response)
         token = _find_token(self._decode(response))
-        if not token:
+        if token:
+            self._token, self._cookie_session = token, False
+            return
+        session = response.cookies.get(_SESSION_COOKIE)
+        if not session:
             raise SntlError("SNTL login did not return a token.")
-        self._token = token
+        self._token, self._cookie_session = session, True
 
     def _headers(self) -> dict[str, str]:
         if not self._token:
             raise SntlError("SNTL authentication failed.")
-        return {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self._token}",
-        }
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        if self._cookie_session:
+            headers["Cookie"] = f"{_SESSION_COOKIE}={self._token}"
+        else:
+            headers["Authorization"] = f"Bearer {self._token}"
+        return headers
 
     @staticmethod
     def _decode(response: httpx.Response) -> Any:
