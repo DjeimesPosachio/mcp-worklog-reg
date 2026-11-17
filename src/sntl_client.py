@@ -21,6 +21,7 @@ _DEFAULT_API = "https://back-end.viptech.com.br"
 
 _TOKEN_KEYS = ("access_token", "accessToken", "token", "jwt")
 _SESSION_COOKIE = "sntl_session"
+_WEB_ORIGIN = "https://sntl.viptech.com.br"
 
 _http_client: httpx.Client | None = None
 
@@ -178,7 +179,7 @@ class SntlClient:
     def _headers(self) -> dict[str, str]:
         if not self._token:
             raise SntlError("SNTL authentication failed.")
-        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        headers = {"Accept": "application/json", "Content-Type": "application/json", "Origin": _WEB_ORIGIN}
         if self._cookie_session:
             headers["Cookie"] = f"{_SESSION_COOKIE}={self._token}"
         else:
